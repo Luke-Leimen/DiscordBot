@@ -1,6 +1,6 @@
 const { Client, GatewayIntentBits, Collection, ChannelType } = require('discord.js');
 const { readdirSync } = require('fs');
-const config    = require('./config.json');
+const config    = (() => { try { return require('./config.json'); } catch { return {}; } })();
 const state     = require('./state');
 const db        = require('./database/db');
 const webServer = require('./web/server');
@@ -28,8 +28,9 @@ client.once('clientReady', async (c) => {
   state.startTime = Date.now();
   state.sessionId = db.startSession();
 
+  const guildId = process.env.GUILD_ID || config.GUILD_ID;
   const commandData = client.commands.map(cmd => cmd.data.toJSON());
-  await client.guilds.cache.get(config.GUILD_ID).commands.set(commandData);
+  await client.guilds.cache.get(guildId).commands.set(commandData);
   console.log(`${commandData.length} Slash Commands registriert.`);
 });
 
