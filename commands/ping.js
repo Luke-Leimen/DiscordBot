@@ -6,6 +6,7 @@ module.exports = {
     .setDescription('Antwortet mit Pong!'),
 
   async execute(interaction) {
-    await interaction.reply('Pong!');
+    const time = Date.now() - interaction.createdTimestamp;
+    await interaction.reply(`Pong! (${time}ms)`);
   }
 };
