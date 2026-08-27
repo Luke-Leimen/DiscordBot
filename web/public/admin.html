@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Discord Bot · Admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #111214; --surface: #1e1f22; --surface2: #2b2d31;
+      --border: #3b3d44; --accent: #5865f2; --text: #dcdde0;
+      --muted: #80848e; --green: #23a55a; --red: #f23f43;
+    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; }
+
+    /* ── Access screens ── */
+    .screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .screen-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 2.5rem 2rem; width: 100%; max-width: 400px; text-align: center; }
+    .screen-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+    .screen-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .screen-sub { color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .screen-sub code { background: var(--surface2); padding: 1px 6px; border-radius: 4px; font-family: monospace; color: var(--accent); }
+
+    /* ── Header ── */
+    header { position: sticky; top: 0; z-index: 100; background: var(--surface); border-bottom: 1px solid var(--border); height: 56px; display: flex; align-items: center; padding: 0 1.5rem; gap: 1rem; }
+    .logo { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+    .badge-admin { background: var(--red); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+    .spacer { flex: 1; }
+    .back-link { color: var(--muted); font-size: 13px; text-decoration: none; }
+    .back-link:hover { color: var(--text); }
+
+    /* ── Tabs ── */
+    .tab-bar { background: var(--surface); border-bottom: 1px solid var(--border); display: flex; padding: 0 1.5rem; }
+    .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; color: var(--muted); padding: 0.9rem 1.1rem; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit; transition: all 0.15s; margin-bottom: -1px; }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Layout ── */
+    .container { max-width: 1280px; margin: 0 auto; padding: 1.5rem; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.25rem; margin-bottom: 1rem; }
+    .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+    .card-title { font-size: 13px; font-weight: 700; }
+    .range-group { display: flex; gap: 3px; }
+    .range-btn { background: none; border: 1px solid var(--border); color: var(--muted); padding: 3px 8px; border-radius: 5px; cursor: pointer; font-size: 12px; font-family: inherit; transition: all 0.15s; }
+    .range-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .range-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* ── Tables ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    tbody tr { transition: background 0.1s; }
+    tbody tr:hover { background: var(--surface2); }
+    tbody td { padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border); }
+    tbody tr:last-child td { border-bottom: none; }
+    .cmd { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px; background: var(--surface2); color: var(--accent); padding: 1px 6px; border-radius: 4px; }
+    .t-muted { color: var(--muted); font-size: 12px; }
+    .user-link { color: var(--accent); cursor: pointer; }
+    .user-link:hover { text-decoration: underline; }
+    .badge-join { background: rgba(35,165,90,.2); color: var(--green); padding: 1px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .badge-leave { background: rgba(242,63,67,.2); color: var(--red); padding: 1px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .empty { text-align: center; color: var(--muted); padding: 2rem; }
+
+    /* ── Pagination ── */
+    .pagination { display: flex; align-items: center; gap: 0.5rem; justify-content: center; margin-top: 1rem; }
+    .page-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); padding: 4px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; font-family: inherit; transition: all 0.15s; }
+    .page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .page-btn:disabled { opacity: 0.4; cursor: default; }
+    .page-info { font-size: 12px; color: var(--muted); min-width: 60px; text-align: center; }
+
+    /* ── Modal ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 200; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .modal-title { font-size: 1rem; font-weight: 700; }
+    .modal-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; padding: 2px 6px; }
+    .modal-close:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+
+  <!-- No Access Screen -->
+  <div class="screen" id="errorScreen" style="display:none">
+    <div class="screen-box">
+      <div class="screen-icon">🔒</div>
+      <div class="screen-title">Kein Zugriff</div>
+      <div class="screen-sub" id="errorMsg">
+        Führe <code>/admin</code> in Discord aus, um einen Zugangslink zu erhalten.
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" style="display:none">
+    <header>
+      <div class="logo">🤖 <span>Discord Bot</span> <span class="badge-admin">Admin</span></div>
+      <div class="spacer"></div>
+      <a href="/" class="back-link">← Dashboard</a>
+    </header>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="users">Nutzer</button>
+      <button class="tab-btn" data-tab="logs">Logs</button>
+      <button class="tab-btn" data-tab="members">Mitglieder</button>
+    </div>
+
+    <div class="container">
+      <!-- Users Tab -->
+      <div class="tab-content active" id="tab-users">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Top Nutzer</span>
+            <div class="range-group" id="userRange">
+              <button class="range-btn active" data-days="7">7T</button>
+              <button class="range-btn" data-days="30">30T</button>
+              <button class="range-btn" data-days="90">90T</button>
+              <button class="range-btn" data-days="0">Gesamt</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Nutzer</th><th>User-ID</th><th>Befehle</th></tr></thead>
+              <tbody id="usersBody"><tr><td colspan="4" class="empty">Laden…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Logs Tab -->
+      <div class="tab-content" id="tab-logs">
+        <div class="card">
+          <div class="card-head"><span class="card-title">Befehlsprotokoll</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Befehl</th><th>Nutzer</th><th>Zeit</th></tr></thead>
+              <tbody id="logsBody"><tr><td colspan="3" class="empty">Laden…</td></tr></tbody>
+            </table>
+          </div>
+          <div class="pagination">
+            <button class="page-btn" id="prevPage" disabled>← Zurück</button>
+            <span class="page-info" id="pageInfo">Seite 1</span>
+            <button class="page-btn" id="nextPage">Weiter →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Members Tab -->
+      <div class="tab-content" id="tab-members">
+        <div class="card">
+          <div class="card-head"><span class="card-title">Mitgliederverlauf</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Ereignis</th><th>Nutzer</th><th>Zeit</th></tr></thead>
+              <tbody id="membersBody"><tr><td colspan="3" class="empty">Laden…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- User History Modal -->
+  <div class="modal-overlay" id="userModal">
+    <div class="modal">
+      <div class="modal-head">
+        <span class="modal-title" id="modalTitle">Nutzerverlauf</span>
+        <button class="modal-close" id="modalClose">✕</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Befehl</th><th>Zeit</th></tr></thead>
+          <tbody id="modalBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let token = null;
+    let logsOffset = 0;
+    const PAGE_SIZE = 50;
+
+    function hdrs() { return { 'X-Admin-Token': token }; }
+    function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function timeAgo(ts) {
+      const s = Math.floor((Date.now()-ts)/1000);
+      if (s < 60) return 'Gerade eben';
+      if (s < 3600) return `vor ${Math.floor(s/60)} Min`;
+      if (s < 86400) return `vor ${Math.floor(s/3600)} Std`;
+      const d = new Date(ts);
+      return d.toLocaleDateString('de',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('de',{hour:'2-digit',minute:'2-digit'});
+    }
+
+    function showError(msg) {
+      if (msg) document.getElementById('errorMsg').innerHTML = msg;
+      document.getElementById('errorScreen').style.display = '';
+    }
+
+    function showDashboard() {
+      document.getElementById('dashboard').style.display = '';
+      loadUsers(7); loadLogs(0); loadMembers();
+    }
+
+    // ── Auth: read token from URL, then verify ────────────────────────────────
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const urlToken = params.get('token');
+      if (urlToken) {
+        sessionStorage.setItem('adminToken', urlToken);
+        history.replaceState({}, '', '/admin.html');
+      }
+      token = sessionStorage.getItem('adminToken');
+      if (!token) { showError('Führe <code>/admin</code> in Discord aus, um einen Zugangslink zu erhalten.'); return; }
+      const res = await fetch('/api/admin/verify', { headers: hdrs() });
+      if (res.ok) {
+        showDashboard();
+      } else {
+        sessionStorage.removeItem('adminToken');
+        showError('🕐 Token abgelaufen oder ungültig.<br><br>Führe <code>/admin</code> in Discord erneut aus.');
+      }
+    })();
+
+    // ── Tabs ──────────────────────────────────────────────────────────────────
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ── Users ─────────────────────────────────────────────────────────────────
+    document.getElementById('userRange').addEventListener('click', e => {
+      const btn = e.target.closest('.range-btn'); if (!btn) return;
+      document.querySelectorAll('#userRange .range-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active'); loadUsers(+btn.dataset.days);
+    });
+
+    async function loadUsers(days) {
+      const rows = await fetch(`/api/admin/users?days=${days}`, { headers: hdrs() }).then(r => r.json());
+      const tbody = document.getElementById('usersBody');
+      if (!rows.length) { tbody.innerHTML = '<tr><td colspan="4" class="empty">Keine Daten</td></tr>'; return; }
+      tbody.innerHTML = rows.map((r, i) => `
+        <tr>
+          <td class="t-muted">${i+1}</td>
+          <td><span class="user-link" data-uid="${esc(r.user_id)}" data-name="${esc(r.username)}">${esc(r.username)}</span></td>
+          <td class="t-muted">${esc(r.user_id)}</td>
+          <td>${r.count}</td>
+        </tr>`).join('');
+      tbody.querySelectorAll('.user-link').forEach(el => el.addEventListener('click', () => openUserModal(el.dataset.uid, el.dataset.name)));
+    }
+
+    // ── Logs ──────────────────────────────────────────────────────────────────
+    async function loadLogs(offset) {
+      const rows = await fetch(`/api/admin/logs?limit=${PAGE_SIZE}&offset=${offset}`, { headers: hdrs() }).then(r => r.json());
+      const tbody = document.getElementById('logsBody');
+      if (!rows.length) { tbody.innerHTML = '<tr><td colspan="3" class="empty">Keine weiteren Einträge</td></tr>'; return; }
+      tbody.innerHTML = rows.map(r => `
+        <tr>
+          <td><span class="cmd">/${esc(r.command)}</span></td>
+          <td><span class="user-link" data-uid="${esc(r.user_id)}" data-name="${esc(r.username)}">${esc(r.username)}</span></td>
+          <td class="t-muted">${timeAgo(r.timestamp)}</td>
+        </tr>`).join('');
+      tbody.querySelectorAll('.user-link').forEach(el => el.addEventListener('click', () => openUserModal(el.dataset.uid, el.dataset.name)));
+      document.getElementById('pageInfo').textContent = `Seite ${Math.floor(offset/PAGE_SIZE)+1}`;
+      document.getElementById('prevPage').disabled = offset === 0;
+      document.getElementById('nextPage').disabled = rows.length < PAGE_SIZE;
+      logsOffset = offset;
+    }
+
+    document.getElementById('prevPage').addEventListener('click', () => loadLogs(Math.max(0, logsOffset - PAGE_SIZE)));
+    document.getElementById('nextPage').addEventListener('click', () => loadLogs(logsOffset + PAGE_SIZE));
+
+    // ── Members ───────────────────────────────────────────────────────────────
+    async function loadMembers() {
+      const rows = await fetch('/api/admin/member-events', { headers: hdrs() }).then(r => r.json());
+      const tbody = document.getElementById('membersBody');
+      if (!rows.length) { tbody.innerHTML = '<tr><td colspan="3" class="empty">Noch keine Ereignisse</td></tr>'; return; }
+      tbody.innerHTML = rows.map(r => `
+        <tr>
+          <td><span class="${r.event_type === 'join' ? 'badge-join' : 'badge-leave'}">${r.event_type === 'join' ? '✦ Beigetreten' : '✦ Verlassen'}</span></td>
+          <td>${esc(r.username)}</td>
+          <td class="t-muted">${timeAgo(r.timestamp)}</td>
+        </tr>`).join('');
+    }
+
+    // ── User Modal ────────────────────────────────────────────────────────────
+    async function openUserModal(userId, username) {
+      document.getElementById('modalTitle').textContent = '📋 ' + username;
+      document.getElementById('modalBody').innerHTML = '<tr><td colspan="2" class="empty">Laden…</td></tr>';
+      document.getElementById('userModal').classList.add('open');
+      const rows = await fetch(`/api/admin/user/${encodeURIComponent(userId)}`, { headers: hdrs() }).then(r => r.json());
+      document.getElementById('modalBody').innerHTML = rows.length
+        ? rows.map(r => `<tr><td><span class="cmd">/${esc(r.command)}</span></td><td class="t-muted">${timeAgo(r.timestamp)}</td></tr>`).join('')
+        : '<tr><td colspan="2" class="empty">Keine Einträge</td></tr>';
+    }
+
+    document.getElementById('modalClose').addEventListener('click', () => document.getElementById('userModal').classList.remove('open'));
+    document.getElementById('userModal').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('open'); });
+  </script>
+</body>
+</html>

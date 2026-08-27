@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Discord Bot · Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #111214; --surface: #1e1f22; --surface2: #2b2d31;
+      --border: #3b3d44; --accent: #5865f2; --text: #dcdde0;
+      --muted: #80848e; --green: #23a55a; --red: #f23f43;
+    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; }
+    a { color: var(--accent); text-decoration: none; }
+
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      height: 56px; display: flex; align-items: center; padding: 0 1.5rem; gap: 1rem;
+    }
+    .logo { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+    .status-pill {
+      display: flex; align-items: center; gap: 0.4rem;
+      background: var(--surface2); border-radius: 999px; padding: 0.25rem 0.75rem;
+      font-size: 12px; color: var(--muted);
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); transition: background 0.3s; }
+    .dot.online { background: var(--green); box-shadow: 0 0 5px var(--green); }
+    .spacer { flex: 1; }
+    .uptime-label { font-size: 12px; color: var(--muted); }
+    .btn-admin {
+      background: var(--accent); color: #fff; padding: 0.35rem 0.9rem;
+      border-radius: 6px; font-size: 13px; font-weight: 600; transition: filter 0.15s;
+    }
+    .btn-admin:hover { filter: brightness(1.1); }
+
+    .container { max-width: 1280px; margin: 0 auto; padding: 1.5rem; }
+
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.25rem; }
+    @media (max-width: 900px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px) { .stats { grid-template-columns: 1fr; } }
+    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.25rem; }
+    .stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.4rem; }
+    .stat-value { font-size: 1.75rem; font-weight: 800; color: var(--text); line-height: 1; }
+
+    .charts { display: grid; grid-template-columns: 3fr 2fr; gap: 1rem; margin-bottom: 1.25rem; }
+    @media (max-width: 768px) { .charts { grid-template-columns: 1fr; } }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.25rem; }
+    .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+    .card-title { font-size: 13px; font-weight: 700; }
+    .range-group { display: flex; gap: 3px; }
+    .range-btn {
+      background: none; border: 1px solid var(--border); color: var(--muted);
+      padding: 3px 8px; border-radius: 5px; cursor: pointer; font-size: 12px; font-family: inherit; transition: all 0.15s;
+    }
+    .range-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .range-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    tbody tr { transition: background 0.1s; }
+    tbody tr:hover { background: var(--surface2); }
+    tbody td { padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border); }
+    tbody tr:last-child td { border-bottom: none; }
+    .cmd { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px; background: var(--surface2); color: var(--accent); padding: 1px 6px; border-radius: 4px; }
+    .t-muted { color: var(--muted); font-size: 12px; }
+    .empty { text-align: center; color: var(--muted); padding: 2rem; }
+    .filter-bar { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .filter-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 0.45rem 0.75rem; font-size: 13px; font-family: inherit; outline: none; transition: border-color 0.15s; min-width: 0; }
+    .filter-input:focus { border-color: var(--accent); }
+    .filter-input::placeholder { color: var(--muted); }
+    .filter-count { font-size: 12px; color: var(--muted); align-self: center; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">🤖 <span>Discord Bot</span></div>
+    <div class="status-pill">
+      <div class="dot" id="dot"></div>
+      <span id="statusText">Verbinden…</span>
+    </div>
+    <div class="spacer"></div>
+    <span class="uptime-label" id="uptimeLabel"></span>
+    <a href="/admin.html" class="btn-admin">Admin →</a>
+  </header>
+
+  <div class="container">
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Befehle gesamt</div><div class="stat-value" id="sCmd">—</div></div>
+      <div class="stat"><div class="stat-label">Aktive Nutzer</div><div class="stat-value" id="sUsers">—</div></div>
+      <div class="stat"><div class="stat-label">Heute</div><div class="stat-value" id="sToday">—</div></div>
+      <div class="stat"><div class="stat-label">Servermitglieder</div><div class="stat-value" id="sMembers">—</div></div>
+    </div>
+
+    <div class="charts">
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Aktivität</span>
+          <div class="range-group" id="actRange">
+            <button class="range-btn" data-days="7">7T</button>
+            <button class="range-btn active" data-days="30">30T</button>
+            <button class="range-btn" data-days="90">90T</button>
+            <button class="range-btn" data-days="365">1J</button>
+          </div>
+        </div>
+        <canvas id="actChart"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Top Befehle</span>
+          <div class="range-group" id="cmdRange">
+            <button class="range-btn active" data-days="30">30T</button>
+            <button class="range-btn" data-days="0">Gesamt</button>
+          </div>
+        </div>
+        <canvas id="cmdChart"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="card-title">Letzte Aktivität</span><span class="filter-count" id="filterCount"></span></div>
+      <div class="filter-bar">
+        <input class="filter-input" id="filterUser" type="text" placeholder="Nutzer suchen…" />
+        <input class="filter-input" id="filterCmd"  type="text" placeholder="Befehl suchen…" />
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Befehl</th><th>Nutzer</th><th>Zeit</th></tr></thead>
+          <tbody id="recentBody"><tr><td colspan="3" class="empty">Laden…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const C = {
+      accent: '#5865f2', accentFill: 'rgba(88,101,242,.15)',
+      border: '#3b3d44', muted: '#80848e', surface2: '#2b2d31',
+    };
+    Chart.defaults.color = C.muted;
+    Chart.defaults.borderColor = C.border;
+    Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    const tip = { backgroundColor: '#2b2d31', borderColor: '#3b3d44', borderWidth: 1, titleColor: '#dcdde0', bodyColor: '#80848e', padding: 10 };
+
+    let actChart, cmdChart, actDays = 30, cmdDays = 30;
+
+    function fmt(n) { return (n || 0).toLocaleString('de'); }
+    function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function fmtDur(ms) {
+      const d = Math.floor(ms/86400000), h = Math.floor(ms%86400000/3600000), m = Math.floor(ms%3600000/60000);
+      if (d > 0) return `${d}T ${h}Std`; if (h > 0) return `${h}Std ${m}Min`; return `${m}Min`;
+    }
+    function timeAgo(ts) {
+      const s = Math.floor((Date.now()-ts)/1000);
+      if (s < 60) return 'Gerade eben';
+      if (s < 3600) return `vor ${Math.floor(s/60)} Min`;
+      if (s < 86400) return `vor ${Math.floor(s/3600)} Std`;
+      return `vor ${Math.floor(s/86400)} Tagen`;
+    }
+    function fillDays(data, days) {
+      const map = Object.fromEntries(data.map(d => [d.day, d.count]));
+      return Array.from({ length: days }, (_, i) => {
+        const dt = new Date(); dt.setDate(dt.getDate() - (days - 1 - i));
+        const key = dt.toISOString().slice(0, 10);
+        return { day: key, count: map[key] || 0 };
+      });
+    }
+    function fmtDay(iso, days) {
+      const [,m,d] = iso.split('-');
+      return days > 180 ? m+'.' : d+'.'+m+'.';
+    }
+
+    async function loadStats() {
+      try {
+        const d = await fetch('/api/stats').then(r => r.json());
+        document.getElementById('sCmd').textContent    = fmt(d.totalCommands);
+        document.getElementById('sUsers').textContent  = fmt(d.uniqueUsers);
+        document.getElementById('sToday').textContent  = fmt(d.commandsToday);
+        document.getElementById('sMembers').textContent = d.memberCount ? fmt(d.memberCount) : '—';
+        const dot = document.getElementById('dot');
+        document.getElementById('statusText').textContent = d.online ? 'Online' : 'Offline';
+        d.online ? dot.classList.add('online') : dot.classList.remove('online');
+        if (d.online && d.lastSession)
+          document.getElementById('uptimeLabel').textContent = 'Uptime: ' + fmtDur(Date.now() - d.lastSession.start_time);
+      } catch(e) { console.error(e); }
+    }
+
+    async function loadActivity(days) {
+      const raw = await fetch(`/api/activity?days=${days}`).then(r => r.json());
+      const data = fillDays(raw, days);
+      const labels = data.map(d => fmtDay(d.day, days));
+      const values = data.map(d => d.count);
+      if (actChart) {
+        actChart.data.labels = labels; actChart.data.datasets[0].data = values; actChart.update('none');
+      } else {
+        actChart = new Chart(document.getElementById('actChart'), {
+          type: 'line',
+          data: { labels, datasets: [{ label: 'Befehle', data: values, borderColor: C.accent, backgroundColor: C.accentFill, fill: true, tension: 0.3, pointRadius: days <= 30 ? 3 : 0, pointHoverRadius: 5 }] },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false }, tooltip: tip },
+            scales: {
+              x: { grid: { display: false }, ticks: { maxTicksLimit: 10, maxRotation: 0 } },
+              y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { precision: 0 } }
+            }
+          }
+        });
+      }
+    }
+
+    async function loadCommands(days) {
+      const rows = await fetch(`/api/commands?days=${days}`).then(r => r.json());
+      const labels = rows.map(r => '/'+r.command), values = rows.map(r => r.count);
+      if (cmdChart) {
+        cmdChart.data.labels = labels; cmdChart.data.datasets[0].data = values; cmdChart.update('none');
+      } else {
+        cmdChart = new Chart(document.getElementById('cmdChart'), {
+          type: 'bar',
+          data: { labels, datasets: [{ label: 'Nutzungen', data: values, backgroundColor: C.accent, borderRadius: 4, barThickness: 18 }] },
+          options: {
+            indexAxis: 'y', responsive: true,
+            plugins: { legend: { display: false }, tooltip: tip },
+            scales: {
+              x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { precision: 0 } },
+              y: { grid: { display: false } }
+            }
+          }
+        });
+      }
+    }
+
+    let allLogs = [];
+
+    async function loadRecent() {
+      allLogs = await fetch('/api/recent?limit=200').then(r => r.json());
+      renderLogs();
+    }
+
+    function renderLogs() {
+      const userQ = document.getElementById('filterUser').value.toLowerCase().trim();
+      const cmdQ  = document.getElementById('filterCmd').value.toLowerCase().trim();
+      const filtered = allLogs.filter(r =>
+        (!userQ || r.username.toLowerCase().includes(userQ)) &&
+        (!cmdQ  || r.command.toLowerCase().includes(cmdQ))
+      );
+      const tbody = document.getElementById('recentBody');
+      const count = document.getElementById('filterCount');
+      count.textContent = (userQ || cmdQ) ? `${filtered.length} von ${allLogs.length}` : (allLogs.length ? `${allLogs.length} Einträge` : '');
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="3" class="empty">${allLogs.length ? 'Keine Übereinstimmungen' : 'Noch keine Aktivität'}</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = filtered.map(r =>
+        `<tr><td><span class="cmd">/${esc(r.command)}</span></td><td>${esc(r.username)}</td><td class="t-muted">${timeAgo(r.timestamp)}</td></tr>`
+      ).join('');
+    }
+
+    document.getElementById('filterUser').addEventListener('input', renderLogs);
+    document.getElementById('filterCmd').addEventListener('input', renderLogs);
+
+    document.getElementById('actRange').addEventListener('click', e => {
+      const btn = e.target.closest('.range-btn'); if (!btn) return;
+      document.querySelectorAll('#actRange .range-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active'); actDays = +btn.dataset.days; loadActivity(actDays);
+    });
+    document.getElementById('cmdRange').addEventListener('click', e => {
+      const btn = e.target.closest('.range-btn'); if (!btn) return;
+      document.querySelectorAll('#cmdRange .range-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active'); cmdDays = +btn.dataset.days; loadCommands(cmdDays);
+    });
+
+    loadStats(); loadActivity(actDays); loadCommands(cmdDays); loadRecent();
+    setInterval(() => { loadStats(); loadRecent(); }, 30000);
+  </script>
+</body>
+</html>
